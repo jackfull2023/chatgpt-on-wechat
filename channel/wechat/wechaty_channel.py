@@ -55,6 +55,28 @@ class WechatyChannel(ChatChannel):
         self.name = contact.name
         logger.info("[WX] login user={}".format(contact))
 
+    async def _handle(self, context: Context):
+        # Call the parent class's _handle method
+        await super()._handle(context)
+        if context.get("isgroup", False):
+        # Check if the reply is from the group owner
+            if context.get("actual_user_id",'') == conf().get("group_owner_id", ""):
+                # Forward the reply to another friend
+                ##forward_reply_to_friend(reply_text) 
+                reply_text = context.get("content", "此消息为空")
+                await self.forward_reply_to_friend(reply_text)
+
+    async def forward_reply_to_friend(self, reply_text):
+        # 获取好友的微信昵称
+        friend_nickname = conf().get("forward_friend_nickname")
+        # 找到好友
+        friend = await self.Contact.find(friend_nickname)
+        
+        # 如果找到了好友，就发送消息
+        if friend:
+            await friend.say(reply_text)
+        else:
+            logger.error(f"未找到好友：{friend_nickname}")
     # 统一的发送函数，每个Channel自行实现，根据reply的type字段发送不同类型的消息
     def send(self, reply: Reply, context: Context):
         receiver_id = context["receiver"]
